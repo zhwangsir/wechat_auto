@@ -9,7 +9,7 @@ from tkinter import *
 
 wx = WeChat()
 delay_seconds = 2
-
+screenSize = gui.size()
 def judgeChar(string, char):
     pattern = re.compile(char)
     return bool(re.search(pattern, string))
@@ -22,20 +22,52 @@ def SelectContent(string):
 
 def auto_reply():
     try:
-        msgs = wx.GetAllNewMessage()
-        current = wx.CurrentChat()
-        if msgs != {}:
-            for key in msgs.keys():
-                if key == current:
-                    message = str(msgs.get(key)[-1])
-                    if judgeChar(message, "查询"):
-                        reContent = SelectContent(message)
-                        overMessage = pickup_code(reContent)
-                        dangdang = f"单号：{overMessage.get('单号')}\n状态：{overMessage.get('状态')}\n快递公司：{overMessage.get('快递公司')}\n取件码：{overMessage.get('取件码')}\n入库时间：{overMessage.get('入库时间')}\n温馨提示：为避免同学快递丢失请速速取走您的包裹，如有取错请及时联系工作人员。\n快递问题投诉：19178467032"
-                        wx.SendMsg(dangdang)
+        # msgs = wx.GetAllNewMessage()
+        # current = wx.CurrentChat()
+        # if msgs != {}:
+        #     for key in msgs.keys():
+        #         if key == current:
+        session = wx.GetSessionList()
+        for sess in session:
+            if session[sess] != 0:
+                wx.ChatWith(sess)
+                myMessage = wx.GetAllMessage()
+                for msg in myMessage:
+                    if msg.type == "friend":
+                        sender = msg.sender
+                        # print(f'{sender.rjust(3)}：{msg.content}')
+                        message = str(msg.content)
+                        if judgeChar(message, "查询"):
+                            reContent = SelectContent(message)
+                            overMessage = pickup_code(reContent)
+                            print(overMessage)
+                            dangdang = f"单号：{overMessage.get('单号')}\n状态：{overMessage.get('状态')}\n快递公司：{overMessage.get('快递公司')}\n取件码：{overMessage.get('取件码')}\n入库时间：{overMessage.get('入库时间')}\n温馨提示：为避免同学快递丢失请速速取走您的包裹，如有取错请及时联系工作人员。\n快递问题投诉：19178467032"
+                            wx.SendMsg(dangdang)
+                            clearMessage()
+            else:
+                thread = threading.Timer(delay_seconds, New_friend)
+                thread.start()
+                thread.join()  # 确保线程完成后再继续执行下一个循环
+
         time.sleep(0.5)
     except Exception as e:
         print("Error in auto_reply:", e)
+
+def clearMessage():
+    try:
+        wx.ChatWith(wx.CurrentChat())
+        gui.rightClick()
+        img_position("./source/delchat.png")
+        time.sleep(0.5)
+        gui.keyDown("tab")
+        time.sleep(0.5)
+        gui.press("enter")
+        time.sleep(0.5)
+        chrome_top()
+        inputclear()
+        extract_value("clear()")
+    except Exception as e:
+        print("Error in clearMessage:", e)
 
 def New_friend():
     try:
@@ -48,10 +80,14 @@ def New_friend():
         print("Error in New_friend:", e)
 
 def menuClick():
-    moveClick(74, 409)
+    img_position("./source/select.png")
 
 def inputClick():
-    moveClick(514, 118)
+    check_input = gui.locateOnScreen("./source/input.png")
+    check_input_center = gui.center(check_input)
+    gui.moveTo(check_input_center)
+    gui.moveTo(gui.position().x+200,gui.position().y)
+    gui.click()
 
 def inputclear():
     inputClick()
@@ -71,28 +107,42 @@ def ctrlv():
     tkr = Tk()
     data = tkr.clipboard_get()
     return data
-
+def img_position(path):
+    check_chrome = gui.locateOnScreen(path)
+    click_check_chrome = gui.center(check_chrome)
+    gui.moveTo(click_check_chrome)
+    gui.click()
+def extract_value(code):
+    gui.moveTo(screenSize.width/2.0, screenSize.height/1.5)
+    gui.rightClick()
+    img_position("./source/check.png")
+    img_position("./source/console.png")
+    gui.typewrite(f"copy({code})")
+    time.sleep(0.5)
+    gui.keyDown("enter")
 def ctlc(ctn):
     try:
         if ctn == "num":
-            gui.moveTo(480, 510)
-            gui.dragRel(-200, 0, duration=0.5)
-            gui.hotkey('ctrl', 'c')
+            gui.moveTo(screenSize.width / 2.0, screenSize.height / 1.5)
+            gui.rightClick()
+            img_position("./source/check.png")
+            img_position("./source/console.png")
+            gui.typewrite(f"let table = document.querySelector('table')")
+            time.sleep(0.5)
+            gui.keyDown("enter")
+            extract_value("table.rows[1].children[1].children[0].children[0].innerHTML")
             return ctrlv()
-        elif ctn == "code":
-            gui.moveTo(961, 510)
-            gui.dragRel(-120, 0, duration=0.5)
-            gui.hotkey('ctrl', 'c')
+        if ctn == "code":
+            extract_value("table.rows[1].children[4].children[0].innerHTML")
             return ctrlv()
-        elif ctn == "name":
-            gui.moveTo(685, 510)
-            gui.dragRel(-120, 0, duration=0.5)
-            gui.hotkey('ctrl', 'c')
+        if ctn == "name":
+            extract_value("table.rows[1].children[2].children[0].children[0].innerHTML")
             return ctrlv()
-        elif ctn == "status":
-            gui.moveTo(1250, 555)
-            gui.dragRel(-80, -40, duration=0.5)
-            gui.hotkey('ctrl', 'c')
+        if ctn == "status":
+            extract_value("table.rows[1].children[6].children[0].children[0].children[0].innerHTML")
+            return ctrlv()
+        if ctn == "mes":
+            extract_value(f'table.rows[1].children[6].children[0].children[0].children[1].innerHTML+" "+table.rows[1].children[6].children[0].children[0].children[2].innerHTML')
             return ctrlv()
     except Exception as e:
         print("Error in ctlc:", e)
@@ -123,11 +173,12 @@ def NotFound():
 def pickup_code(text):
     try:
         chrome_top()
+        time.sleep(1)
         menuClick()
         inputclear()
         queryInput(text)
         clickSearch()
-        time.sleep(0.5)
+        # time.sleep(0.5)
         if NotFound() == "false":
             nnbb = context()
             return nnbb
@@ -137,22 +188,23 @@ def pickup_code(text):
         print("Error in pickup_code:", e)
 
 def context():
-    status = ctlc('status').replace("\n", "")
     need = {
         "单号": ctlc('num'),
-        "状态": status[:3],
+        "状态": ctlc('status'),
         "快递公司": ctlc('name'),
         "取件码": ctlc('code'),
-        "入库时间": status[3:],
+        "入库时间": ctlc('mes'),
     }
+    for ee in need:
+        print(ee, need[ee])
     return need
 
 def main():
     while True:
         auto_reply()
-        thread = threading.Timer(delay_seconds, New_friend)
-        thread.start()
-        thread.join()  # 确保线程完成后再继续执行下一个循环
+        time.sleep(0.5)
+
 
 if __name__ == "__main__":
-   main()
+    main()
+    time.sleep(0.5)
